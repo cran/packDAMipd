@@ -9,7 +9,7 @@ get_parameter_estimated_regression(
   data,
   method,
   indep_var,
-  info_get_method,
+  info_get_method = NA,
   info_distribution = NA,
   covariates = NA,
   timevar_survival = NA,
@@ -25,7 +25,9 @@ get_parameter_estimated_regression(
   param2_to_be_estimated = NA,
   covariates2 = NA,
   interaction2 = FALSE,
-  link = NA
+  link = NA,
+  cluster_var = NA,
+  package_mixed_model = NA
 )
 }
 \arguments{
@@ -86,9 +88,14 @@ bivariate regression}
 
 \item{link}{link function to be provided if not using the default link
 for each of the info_distribution}
+
+\item{cluster_var}{cluster variable if any}
+
+\item{package_mixed_model}{package to be used for mixed model
+ie nlme or lme4}
 }
 \value{
-the results of the regression analysis
+results the results of the regression analysis
 }
 \description{
 Get the parameter values using the provided statistical regression methods

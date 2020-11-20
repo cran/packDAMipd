@@ -9,7 +9,8 @@
 #' @examples
 #' \donttest{
 #' data_for_survival <- survival::lung
-#' surv_estimated <- use_parametric_survival("status", data_for_survival, "sex",
+#' surv_estimated <- use_parametric_survival("status", data_for_survival,
+#' "sex",
 #' info_distribution = "weibull",covariates = c("ph.ecog"), "time")
 #' plot_return_residual_survival("status", "sex",
 #' covariates = c("ph.ecog"),surv_estimated$fit)
@@ -30,6 +31,7 @@ plot_return_residual_survival <- function(param_to_be_estimated, indep_var,
   grDevices::pdf(name_file_plot)
   oldpar <- graphics::par(no.readonly = TRUE)
   graphics::par(mar = c(4, 4, 2, 2))
+
   residuals_response <- stats::residuals(fit, type = "response")
   residuals_deviance <- stats::residuals(fit, type = "deviance")
   residuals_working <- stats::residuals(fit, type = "working")
@@ -41,20 +43,26 @@ plot_return_residual_survival <- function(param_to_be_estimated, indep_var,
          "Residuals", lwd = 2)
   plot(residuals_deviance, type = "p", main = "Deviance", ylab =
          "Residuals", lwd = 2)
-  nos <- ceiling(length(covariates) / 2)
-  graphics::par(mfrow = c(2, nos))
-
+  if (sum(is.na(covariates)) == 0) {
+    nos <- 1
+  } else {
+    nos <- ceiling(3 + length(covariates)) / 2
+  }
   residuals_matrix <- stats::residuals(fit, type = "matrix")
   residuals_dfbeta <- stats::residuals(fit, type = "dfbeta")
   residuals_dfbetas <- stats::residuals(fit, type = "dfbetas")
 
-  for (i in seq_len(length(covariates)))
-    plot(residuals_matrix[, i], type = "p", main = "Matrix", ylab =
+  graphics::par(mfrow = c(2, 3))
+  for (i in seq_len(dim(residuals_matrix)[2])) {
+    main_name <- paste("Matrix", colnames(residuals_matrix)[i], sep = ":")
+    plot(residuals_matrix[, i], type = "p", main = main_name, ylab =
            "Residuals", lwd = 2)
-  for (i in seq_len(length(covariates)))
+  }
+   graphics::par(mfrow = c(2, nos))
+  for (i in seq_len(dim(residuals_dfbeta)[2]))
     plot(residuals_dfbeta[, i], type = "p", main = "Dfbeta", ylab =
            "Residuals", lwd = 2)
-  for (i in seq_len(length(covariates)))
+  for (i in seq_len(dim(residuals_dfbetas)[2]))
     plot(residuals_dfbetas[, i], type = "p", main = "Dfbetas", ylab =
            "Residuals", lwd = 2)
   on.exit(graphics::par(oldpar))
@@ -85,7 +93,8 @@ plot_return_residual_survival <- function(param_to_be_estimated, indep_var,
 #' @examples
 #' \donttest{
 #' data_for_survival <- survival::lung
-#' surv_estimated <- use_parametric_survival("status", data_for_survival, "sex",
+#' surv_estimated <- use_parametric_survival("status", data_for_survival,
+#' "sex",
 #' info_distribution = "weibull",covariates = c("ph.ecog"),"time")
 #' plot_prediction_parametric_survival("status", "sex",
 #' covariates = c("ph.ecog"),data_for_survival, surv_estimated$fit, "time")
@@ -106,7 +115,7 @@ plot_prediction_parametric_survival <- function(param_to_be_estimated,
   if (is.null(dataset))
     stop("Error - dataset can not be null")
 
-  if (is.na(covariates)) {
+  if (sum(is.na(covariates)) != 0) {
     no_var <- 1
   }else{
     no_var <- 1 + length(covariates)
@@ -123,11 +132,11 @@ plot_prediction_parametric_survival <- function(param_to_be_estimated,
       other_fixed <- c(indep_var, covariates[-(i - 1)])
     }
     categorical <- list()
-    if (!is.na(other_fixed)) {
+    if (sum(!is.na(other_fixed)) == length(other_fixed)) {
       for (j in seq_len(length(other_fixed))) {
         variable <- dataset[[other_fixed[j]]]
         result <- suppressWarnings(as.numeric(levels(factor(variable))))
-        if (sum(is.na(result)) == 0) catego <- TRUE else catego <- FALSE
+        if (sum(is.na(result)) == 0) catego <- FALSE else catego <- TRUE
         categorical <- c(categorical, catego)
       }
     }
@@ -144,13 +153,16 @@ plot_prediction_parametric_survival <- function(param_to_be_estimated,
     if (sum(is.na(result)) == 0) {
       indep_lvl <- result
     } else {
-      indep_lvl <- unique(as.numeric(as.factor(indep)))
+      levels <- as.numeric(as.factor(indep))
+      levels <- levels[is.na(levels)]
+      indep_lvl <- unique(levels)
     }
     for (m in seq_len(length(indep_lvl))) {
       graphics::matplot(cbind(prediction_value$fit[m, ],
                               prediction_value$fit[m, ] +
                     2 * prediction_value$se.fit[m, ],
-                    prediction_value$fit[m, ] - 2 * prediction_value$se.fit[m, ]) / 30.5,
+                    prediction_value$fit[m, ] - 2 *
+                      prediction_value$se.fit[m, ]) / 30.5,
                     1 - pct, xlab = timevar_survival, ylab = "Survival",
                     type = "l",
                     lty = c(1, 2, 2), col = 3)
@@ -215,7 +227,7 @@ create_new_dataset <- function(var, covar, dataset, categorical) {
       }
       fixed <- dataset[[covar[i]]]
       if (categorical[i]) {
-        fixed_covar <- min(fixed[!is.na(fixed)])
+        fixed_covar <- levels(factor(fixed))[1]
       } else {
         fixed_covar <- mean(fixed, na.rm = TRUE)
       }
@@ -633,9 +645,11 @@ plot_survival_cox_covariates <- function(coxfit, dataset,
         graphics::plot(baseline_haz[, 2], exp(-baseline_haz[, 1]) ^ (exp_coef),
                        col = i, xaxt = "n", yaxt = "n", ann = FALSE)
       }
-      graphics::lines(baseline_haz[, 2], exp(-baseline_haz[, 1]) ^ (exp_coef_ci1),
+      graphics::lines(baseline_haz[, 2],
+                      exp(-baseline_haz[, 1]) ^ (exp_coef_ci1),
                       col = i, lty = 2)
-      graphics::lines(baseline_haz[, 2], exp(-baseline_haz[, 1]) ^ (exp_coef_ci2),
+      graphics::lines(baseline_haz[, 2],
+                      exp(-baseline_haz[, 1]) ^ (exp_coef_ci2),
                       col = i, lty = 2)
       graphics::par(new = TRUE)
     }

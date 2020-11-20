@@ -11,6 +11,7 @@
 #' before passing
 #' @param timevar_survival time variable for survival analysis,
 #' default is NA
+#' @param cluster_var cluster variable for survival analysis
 #' @return the results of the regression analysis
 #' @examples
 #' \donttest{
@@ -26,8 +27,10 @@
 #' Takes into account many different methods like KM.FH, Cox proportional etc.
 #' and then calls appropriate functions to do the survival analysis
 use_survival_analysis <- function(param_to_be_estimated, dataset,
-                                  indep_var, info_get_method, info_distribution,
-                                  covariates, timevar_survival) {
+                                  indep_var, info_get_method,
+                                  info_distribution,
+                                  covariates, timevar_survival,
+                                  cluster_var = NA) {
   # checking if parameters are NULL or NA
   check_list <- list(param_to_be_estimated, indep_var, info_get_method)
   checks <- sapply(check_list, check_null_na)
@@ -38,7 +41,6 @@ use_survival_analysis <- function(param_to_be_estimated, dataset,
   }
   if (is.character(dataset)) {
     dataset <- load_trial_data(dataset)
-    dataset <- stats::na.omit(dataset)
   } else {
     dataset <- dataset
   }
@@ -56,7 +58,7 @@ use_survival_analysis <- function(param_to_be_estimated, dataset,
       caps_info_method == "PARAMETRIC") {
     results <- use_parametric_survival(
       param_to_be_estimated, dataset, indep_var,
-      info_distribution, covariates, timevar_survival
+      info_distribution, covariates, timevar_survival, cluster_var
     )
   }
   if (caps_info_method == "KAPLAN-MEIER" | caps_info_method == "KM") {
@@ -98,6 +100,7 @@ use_survival_analysis <- function(param_to_be_estimated, dataset,
 #' @param covariates list of covariates
 #' @param timevar_survival time variable for survival analysis,
 #' default is NA
+#' @param cluster_var cluster variable for survival analysis
 #' @return the results of the regression analysis
 #' @examples
 #' \donttest{
@@ -134,7 +137,7 @@ use_survival_analysis <- function(param_to_be_estimated, dataset,
 #' the failure times as survival function is 1-CDF of failure time.
 use_parametric_survival <- function(param_to_be_estimated, dataset,
                                     indep_var, info_distribution, covariates,
-                                    timevar_survival) {
+                                    timevar_survival, cluster_var = NA) {
 
   # checking if parameters are NULL or NA
   check_list <- list(param_to_be_estimated, indep_var)
@@ -146,7 +149,6 @@ use_parametric_survival <- function(param_to_be_estimated, dataset,
   }
   if (is.character(dataset)) {
     dataset <- load_trial_data(dataset)
-    dataset <- stats::na.omit(dataset)
   } else {
     dataset <- dataset
   }
@@ -165,20 +167,37 @@ use_parametric_survival <- function(param_to_be_estimated, dataset,
     this_dist <- find_survreg_distribution(info_distribution)
   }
   if (sum(is.na(covariates_list)) != 0) {
+    if (is.na(cluster_var)) {
+
     expression_recreated <- paste0("survival::survreg", "(", surv_object, " ~ ",
                                    indep_var, ", ",
                                    "data = dataset,  dist = \"",
                                    this_dist, "\" ) ",
-                                   sep = ""
-    )
+                                   sep = "")
+    } else {
+      check <- IPDFileCheck::check_column_exists(cluster_var, dataset)
+      if (check == 0) {
+        expression_recreated <- paste0("survival::survreg", "(", surv_object, " ~ ", indep_var, "+ cluster(", cluster_var, ")", ", ", "data = dataset,  dist = \"", this_dist, "\" ) ", sep = "")
+
+      } else {
+        stop("no variable found in the dataset")
+      }
+
+    }
   } else {
-    expression_recreated <- paste0("survival::survreg", "(", surv_object, " ~ ",
-                                   covariates_list, " + ",
-                                   indep_var, ", ",
-                                   "data = dataset,  dist = \"",
-                                   this_dist, "\" ) ",
-                                   sep = ""
-    )
+    if (is.na(cluster_var)) {
+      expression_recreated <- paste0("survival::survreg", "(", surv_object, " ~ ", covariates_list, " + ", indep_var, ", ", "data = dataset,  dist = \"", this_dist, "\" ) ", sep = "")
+
+    } else {
+      check <- IPDFileCheck::check_column_exists(cluster_var, dataset)
+      if (check == 0) {
+
+        expression_recreated <- paste0("survival::survreg", "(", surv_object, " ~ ", covariates_list, " + ", indep_var, "+ cluster(", cluster_var, ")", ", ", "data = dataset,  dist = \"", this_dist, "\" ) ", sep = "")
+      } else {
+        stop("no variable found in the dataset")
+
+      }
+    }
   }
   fit <- eval(parse(text = expression_recreated))
   summary <- summary(fit)
@@ -215,7 +234,6 @@ use_parametric_survival <- function(param_to_be_estimated, dataset,
   CoxSnaell_r2 <- as.vector(1 - exp((2 / N) * (LL0 - LLf)))
   Nagelkerke_r2 <- as.vector((1 - exp((2 / N) * (LL0 - LLf))) /
                                (1 - exp(LL0) ^ (2 / N)))
-
 
   residuals_result <- plot_return_residual_survival(param_to_be_estimated,
                                                     indep_var, covariates, fit)
@@ -289,7 +307,6 @@ use_km_survival <- function(param_to_be_estimated, dataset,
   }
   if (is.character(dataset)) {
     dataset <- load_trial_data(dataset)
-    dataset <- stats::na.omit(dataset)
   } else {
     dataset <- dataset
   }
@@ -350,7 +367,7 @@ use_km_survival <- function(param_to_be_estimated, dataset,
 #' )
 #' }
 #' @details
-#' This function is for survival analysis using Kaplan Meier.
+#' This function is for survival analysis using FH.
 #' This plots the cumulative survival function for each combination of covariate
 #' If the covariate is numeric, R takes it as different levels.
 #' The plot uses the returned list of survfit and extracts the time and the
@@ -369,7 +386,6 @@ use_fh_survival <- function(param_to_be_estimated, dataset,
   }
   if (is.character(dataset)) {
     dataset <- load_trial_data(dataset)
-    dataset <- stats::na.omit(dataset)
   } else {
     dataset <- dataset
   }
@@ -430,7 +446,7 @@ use_fh_survival <- function(param_to_be_estimated, dataset,
 #' }
 #' @export
 #' @details
-#' This function is for survival analysis using Kaplan Meier.
+#' This function is for survival analysis using FH2.
 #' This plots the cumulative survival function for each combination of covariate
 #' If the covariate is numeric, R takes it as different levels.
 #' The plot uses the returned list of survfit and extracts the time and
@@ -448,7 +464,6 @@ use_fh2_survival <- function(param_to_be_estimated, dataset,
   }
   if (is.character(dataset)) {
     dataset <- load_trial_data(dataset)
-    dataset <- stats::na.omit(dataset)
   } else {
     dataset <- dataset
   }
@@ -535,7 +550,6 @@ use_coxph_survival <- function(param_to_be_estimated, dataset, indep_var,
   }
   if (is.character(dataset)) {
     dataset <- load_trial_data(dataset)
-    dataset <- stats::na.omit(dataset)
   } else {
     dataset <- dataset
   }
@@ -601,7 +615,8 @@ use_coxph_survival <- function(param_to_be_estimated, dataset, indep_var,
   N <- nrow(dataset)
   McFadden_r2 <- as.vector(1 - (LLf / LL0))
   CoxSnaell_r2 <- as.vector(1 - exp((2 / N) * (LL0 - LLf)))
-  Nagelkerke_r2 <- as.vector((1 - exp((2 / N) * (LL0 - LLf))) / (1 - exp(LL0) ^ (2 / N)))
+  Nagelkerke_r2 <- as.vector((1 - exp((2 / N) * (LL0 - LLf))) /
+                               (1 - exp(LL0) ^ (2 / N)))
   # wald test for model diagnostics
   wald_test <- as.data.frame(cbind(summary$coefficients[, 4],
                                    summary$coefficients[, 5]))
