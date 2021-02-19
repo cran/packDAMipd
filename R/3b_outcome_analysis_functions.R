@@ -80,6 +80,13 @@ value_eq5d3L_IPD <- function(ind_part_data, eq5d_nrcode) {
     if (any(results < 0)) {
       stop("eq5d responses do not seem right")
     } else {
+      if (is.na(eq5d_nrcode)) {
+        ind <- Reduce(`|`,lapply(eq5d_responses, function(x) x %in% eq5d_nrcode))
+        eq5d_responses <- stats::na.omit(eq5d_responses)
+      } else {
+        ind <- Reduce(`|`,lapply(eq5d_responses, function(x) x %in% eq5d_nrcode))
+        eq5d_responses <- eq5d_responses[!ind,]
+      }
       index3L <- rep(0, nrow(eq5d_responses))
       for (i in seq(nrow(eq5d_responses))) {
         index3L[i] <- valueEQ5D::value_3L_Ind(
@@ -89,7 +96,9 @@ value_eq5d3L_IPD <- function(ind_part_data, eq5d_nrcode) {
         )
       }
       new_colname <- paste("EQ5D3LIndex")
+      rows_needed <- rows_needed[!ind]
       ind_part_data[rows_needed, new_colname] <- index3L
+      ind_part_data[ind, new_colname] <- eq5d_nrcode
     }
   }
   return(ind_part_data)
@@ -140,6 +149,13 @@ value_eq5d5L_IPD <- function(ind_part_data, eq5d_nrcode) {
     if (any(results < 0)) {
       stop("eq5d responses do not seem right")
     } else {
+      if (is.na(eq5d_nrcode)) {
+        ind <- Reduce(`|`,lapply(eq5d_responses, function(x) x %in% eq5d_nrcode))
+        eq5d_responses <- stats::na.omit(eq5d_responses)
+      } else {
+        ind <- Reduce(`|`,lapply(eq5d_responses, function(x) x %in% eq5d_nrcode))
+        eq5d_responses <- eq5d_responses[!ind,]
+      }
       index5L <- rep(0, nrow(eq5d_responses))
       for (i in seq(nrow(eq5d_responses))) {
         index5L[i] <- valueEQ5D::value_5L_Ind(
@@ -149,7 +165,9 @@ value_eq5d5L_IPD <- function(ind_part_data, eq5d_nrcode) {
         )
       }
       new_colname <- paste("EQ5D5LIndex")
+      rows_needed <- rows_needed[!ind]
       ind_part_data[rows_needed, new_colname] <- index5L
+      ind_part_data[ind, new_colname] <- eq5d_nrcode
     }
   }
   return(ind_part_data)
@@ -202,6 +220,15 @@ map_eq5d5Lto3L_VanHout <- function(ind_part_data, eq5d_nrcode) {
     if (any(results != 0)) {
       stop("eq5d responses do not seem right")
     } else {
+      # remove those with non response codes, if missing data has been removed
+      # this will do no harm
+      if (is.na(eq5d_nrcode)) {
+        ind <- Reduce(`|`,lapply(eq5d_responses, function(x) x %in% eq5d_nrcode))
+        eq5d_responses <- stats::na.omit(eq5d_responses)
+      } else {
+        ind <- Reduce(`|`,lapply(eq5d_responses, function(x) x %in% eq5d_nrcode))
+        eq5d_responses <- eq5d_responses[!ind,]
+      }
       index5L <- rep(0, nrow(eq5d_responses))
       for (i in seq(nrow(eq5d_responses))) {
         score_5L <- as.numeric(paste(eq5d_responses[i, 1],
@@ -212,7 +239,9 @@ map_eq5d5Lto3L_VanHout <- function(ind_part_data, eq5d_nrcode) {
         index5L[i] <- valueEQ5D::map_5Lto3L_Ind("UK", "CW", score_5L)
       }
       new_colname <- paste("EQ5D3L_from5L")
+      rows_needed <- rows_needed[!ind]
       ind_part_data[rows_needed, new_colname] <- index5L
+      ind_part_data[ind, new_colname] <- eq5d_nrcode
     }
   }
   return(ind_part_data)
@@ -222,25 +251,28 @@ map_eq5d5Lto3L_VanHout <- function(ind_part_data, eq5d_nrcode) {
 #' @param ind_part_data a data frame containing IPD data
 #' @param adl_related_words related words to find out which columns
 #' contain adl data
-#' @param adl_scoring ADL scoring table
 #' @param adl_nrcode non response code for ADL
+#' @param adl_scoring_table ADL scoring table, if given as NULL use
+#' the default one
 #' @return ADL scores converted to T score included modified data, if
 #' success -1, if failure
 #' @examples
 #' datafile <- system.file("extdata", "trial_data.csv", package = "packDAMipd")
 #' trial_data <- load_trial_data(datafile)
-#' value_ADL_scores_IPD(trial_data,c("tpi"),adl_scoring,NA)
+#' value_ADL_scores_IPD(trial_data,c("tpi"), NA, adl_scoring_table = NULL)
 #' @export
 value_ADL_scores_IPD <- function(ind_part_data, adl_related_words,
-                                 adl_scoring, adl_nrcode) {
+                                 adl_nrcode, adl_scoring_table = NULL) {
   #Error - data should not be NULL
   if (is.null(ind_part_data))
     stop("data should not be NULL")
   #Error - data should not be NULL
-  if (is.null(adl_scoring))
-    stop("ADL scoring table should not be NULL")
+  if (!is.null(adl_scoring_table))
+    adl_scores = adl_scoring_table
+  else
+    adl_scores = packDAMipd::adl_scoring
 
-  adl_scoring_data_columns <- colnames(adl_scoring)
+  adl_scoring_data_columns <- colnames(adl_scores)
   adl_details <- get_outcome_details(ind_part_data, "adl",
                                      adl_related_words, multiple = TRUE)
   adl_columnnames <- adl_details$name
@@ -263,7 +295,7 @@ value_ADL_scores_IPD <- function(ind_part_data, adl_related_words,
     }
     # get ADL responses
     adl_responses <- ind_part_data[rows_needed, adl_columnnames]
-    # Check if the responses are 8 for anindividual
+    # Check if the responses are 8 for an individual
     if (length(adl_columnnames) != 8) {
       stop("error- ADL should have 8 columns")
     } else {
@@ -274,22 +306,33 @@ value_ADL_scores_IPD <- function(ind_part_data, adl_related_words,
     if (any(results < 0)) {
       stop("ADL responses do not seem right")
     } else {
+      # remove those with non response codes, if missing data has been removed
+      # this will do no harm
+      if (is.na(adl_nrcode)) {
+        ind <- Reduce(`|`,lapply(adl_responses, function(x) x %in% adl_nrcode))
+        adl_responses <- stats::na.omit(adl_responses)
+      } else {
+        ind <- Reduce(`|`,lapply(adl_responses, function(x) x %in% adl_nrcode))
+        adl_responses <- adl_responses[!ind,]
+      }
       # Check if ADL scoring table has columns defined in the config file
       if (IPDFileCheck::test_columnnames(adl_scoring_data_columns,
-                                         adl_scoring) == 0) {
+                                         adl_scores) == 0) {
         # Replace NA with 0
-        adl_scoring[is.na(adl_scoring)] <- 0
+        adl_scores[is.na(adl_scores)] <- 0
         # Find the sum of scores
         sumADL <- rowSums(adl_responses)
         TscoreADL <- rep(0, length(sumADL))
         for (i in seq_len(length(sumADL))) {
-          ithrow <- which(adl_scoring$Raw.score == sumADL[i])
+          ithrow <- which(adl_scores$Raw.score == sumADL[i])
           # Get the T score corresponding to raw sum
-          TscoreADL[i] <- adl_scoring$T.Score[ithrow]
+          TscoreADL[i] <- adl_scores$T.Score[ithrow]
         }
         # Add the T score to data , save and return
         new_colname <- paste("ADLTscore")
+        rows_needed <- rows_needed[!ind]
         ind_part_data[rows_needed, new_colname] <- TscoreADL
+        ind_part_data[ind, new_colname] <- adl_nrcode
       } else {
         stop("Error ADL scoring column names are not equal to what specified
              in configuration file")
@@ -348,11 +391,22 @@ value_Shows_IPD <- function(ind_part_data, shows_related_words, shows_nrcode) {
     if (any(results < 0)) {
       stop("ShOWS responses do not seem right")
     } else {
+      # remove those with non response codes, if missing data has been removed
+      # this will do no harm
+      if (is.na(shows_nrcode)) {
+        ind <- Reduce(`|`,lapply(shows_responses, function(x) x %in% shows_nrcode))
+        shows_responses <- stats::na.omit(shows_responses)
+      } else {
+        ind <- Reduce(`|`,lapply(shows_responses, function(x) x %in% shows_nrcode))
+        shows_responses <- shows_responses[!ind,]
+      }
       # Check if shows scoring table has columns defined in the config file
       sumShows <- rowSums(shows_responses) - 10
       # Add the score to data , save and return
       new_colname <- paste("ShOWSscore")
+      rows_needed <- rows_needed[!ind]
       ind_part_data[rows_needed, new_colname] <- sumShows
+      ind_part_data[ind, new_colname] <- shows_nrcode
     }
   }
   return(ind_part_data)

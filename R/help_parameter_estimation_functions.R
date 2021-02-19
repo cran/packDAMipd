@@ -379,13 +379,14 @@ get_extension_file <- function(filename) {
 #######################################################################
 #' Function to load the file containing trial data and return it
 #' @param file, name of the file in full
+#' @param sheet name of the sheet if excel work book is given
 #' @return trial data if success, else -1
 #' @examples
 #' load_trial_data(system.file("extdata", "trial_data.csv",
 #'   package = "packDAMipd"
 #' ))
 #' @export
-load_trial_data <- function(file = NULL) {
+load_trial_data <- function(file = NULL, sheet = NULL) {
   # Load trial data from file input or stored in package
   if (!is.null(file)) {
     if (IPDFileCheck::test_file_exist_read(file) == 0) {
@@ -403,6 +404,24 @@ load_trial_data <- function(file = NULL) {
       }
       if (get_extension_file(file) == "dta") {
         df_trial_data <- foreign::read.dta(file = file)
+      }
+      if (get_extension_file(file) == "xls" |
+          get_extension_file(file) == "xlsx" ) {
+        if (is.null(sheet))
+          df_trial_data <- readxl::read_excel(file)
+        else
+          df_trial_data <- readxl::read_excel(file, sheet = sheet)
+      }
+      if (get_extension_file(file) == "RDS" |
+            get_extension_file(file) == "Rds" |
+            get_extension_file(file) == "rds") {
+        df_trial_data <- readRDS(file)
+      }
+      if (get_extension_file(file) == "Rdata" |
+          get_extension_file(file) == "rdata" |
+          get_extension_file(file) == "RDATA" |
+          get_extension_file(file) == "rda" ) {
+        stop("Please use the data in the form rds, excel, txt, csv, or dta")
       }
     } else {
       stop("Error in reading given file")
@@ -1029,7 +1048,7 @@ prediction_regression <- function(method, fit, expression_recreated,
 get_slope_intercept_cross <- function(expression, random_intercept_vars,
                                 intercept_vars_pairs,
                                 random_slope_intercept_pairs,
-                                uncorrel_slope_intercept_pairs){
+                                uncorrel_slope_intercept_pairs) {
   # checking if parameter to be estimated is NULL or NA
   check_list <- list(expression, random_intercept_vars, intercept_vars_pairs)
   checks <- sapply(check_list, check_null_na)
@@ -1200,7 +1219,7 @@ get_slope_intercept <- function(expression, random_intercept_vars,
 get_slope_intercept_nested <- function(expression, random_intercept_vars,
                                       intercept_vars_pairs,
                                       random_slope_intercept_pairs,
-                                      uncorrel_slope_intercept_pairs){
+                                      uncorrel_slope_intercept_pairs) {
   # checking if parameter to be estimated is NULL or NA
   check_list <- list(expression, random_intercept_vars, intercept_vars_pairs)
   checks <- sapply(check_list, check_null_na)

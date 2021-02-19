@@ -594,9 +594,9 @@ test_that("get parameter using generalised linear mixed model", {
                                                    NA,
                                                  cross_intercept_vars_pairs =
                                                    NA,
-                                                 uncorrel_slope_intercept_pairs =
+                                            uncorrel_slope_intercept_pairs =
                                                    NA,
-                                                 random_slope_intercept_pairs =
+                                            random_slope_intercept_pairs =
                                                    NA,
                                                  link = NA,
                                                  package_mixed_model = "lme4")
@@ -633,9 +633,9 @@ test_that("get parameter using generalised linear mixed model", {
                                                    NULL,
                                                  cross_intercept_vars_pairs =
                                                    NULL,
-                                                 uncorrel_slope_intercept_pairs =
+                                              uncorrel_slope_intercept_pairs =
                                                    NULL,
-                                                 random_slope_intercept_pairs =
+                                              random_slope_intercept_pairs =
                                                    NULL,
                                                  link = NA,
                                                  package_mixed_model = "nlme")
@@ -684,9 +684,7 @@ test_that("get parameter using generalised linear mixed model", {
 })
 
 ###############################################################################
-
 test_that("Bivaraite regression for correlated values", {
-
   datafile <- system.file("extdata", "hsb2.dta", package = "packDAMipd")
   mydata <- foreign::read.dta(datafile)
   results_sureg <- use_seemingly_unrelated_regression("read", "math",
