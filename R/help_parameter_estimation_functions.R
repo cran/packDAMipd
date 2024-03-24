@@ -387,6 +387,7 @@ get_extension_file <- function(filename) {
 #' ))
 #' @export
 load_trial_data <- function(file = NULL, sheet = NULL) {
+  trial_data = NULL
   # Load trial data from file input or stored in package
   if (!is.null(file)) {
     if (IPDFileCheck::test_file_exist_read(file) == 0) {
@@ -543,7 +544,7 @@ find_glm_distribution <- function(text) {
     keyword <- "gaussian"
   }
   if (text == "GAMMA") {
-    keyword <- "gamma"
+    keyword <- "Gamma"
   }
   if (text == "INVERSE.GAUSSIAN" | text == "INVERSE GAUSSIAN" |
       text == "INVERSE_GAUSSIAN") {
@@ -592,6 +593,7 @@ check_link_glm <- function(family, link) {
   }
   family <- tolower(trimws(toupper(family)))
   link <- tolower(trimws(toupper(link)))
+  link_accept = NULL
   if (family == "gaussian") {
     link_accept <- c("identity", "log", "inverse")
   }
@@ -618,6 +620,9 @@ check_link_glm <- function(family, link) {
   if (family == "quasipoisson") {
     link_accept <- c("logit", "probit", "cloglog", "identity", "inverse",
                      "log", "1/mu^2", "sqrt")
+  }
+  if (is.null(link_accept)) {
+    stop("Error - link is not found")
   }
   matching <- match(link, link_accept)
   #if not matching throw error or return the link
@@ -731,6 +736,11 @@ do_diagnostic_glm <- function(method = "glm", fit, expression_recreated,
   grDevices::pdf(name_file_plot)
   plot_diagnostics <- graphics::plot(fit)
   grDevices::dev.off()
+  # wald_test_results <- c()
+  # for (i in 1:length(coef(fit))) {
+  #   this_res <- aod::wald.test(b = coef(fit), Sigma = vcov(fit), Terms = coef(fit)[i])
+  #   wald_test_results <- append(wald_test_results, this_res)
+  # }
 
   results <- list(
     autocorr_error_test = autocorr_error_test,
@@ -965,10 +975,10 @@ do_diagnostic_linear_regression <- function(method, fit, expression_recreated,
 
 #######################################################################
 #' Do the prediction for regression
-#' @param method param describing the methods, expects lm
-#' @param expression_recreated the expression recreated for calling lm
-#' @param param_to_be_estimated  parameter of interest
-#' @param dataset data set to be provided
+#' @param method, param describing the methods, expects lm
+#' @param fit results of the regression fit
+#' @param expression_recreated, the expression recreated for calling lm
+#' @param param_to_be_estimated,  parameter of interest
 #' @param indep_var the independent variable (column name in data file)
 #' @param covariates list of covariates - calculations to be done before
 #' passing
@@ -976,6 +986,7 @@ do_diagnostic_linear_regression <- function(method, fit, expression_recreated,
 #' linear regression, false by default
 #' @return the results of the regression analysis
 #' @keywords internal
+#' @importFrom effects predictorEffects
 #' @examples
 #' \donttest{
 #' datafile = system.file("extdata", "binary.csv", package = "packDAMipd")
@@ -985,7 +996,6 @@ do_diagnostic_linear_regression <- function(method, fit, expression_recreated,
 #' predict = prediction_regression("lm",results_logit$fit,
 #' results_logit$fit$call, "admit",covariates = NA,"gre", FALSE )
 #'}
-#' @importFrom effects predictorEffects
 #' @export
 prediction_regression <- function(method, fit, expression_recreated,
                                   param_to_be_estimated, indep_var,
@@ -1362,9 +1372,9 @@ get_slope_intercept_nested <- function(expression, random_intercept_vars,
 }
 #######################################################################
 #' Form expression to use with mixed models
-#' @param param_to_be_estimated column name of dependent variable
-#' @param dataset a dataframe
-#' @param fix_eff names of variables as fixed effect predictors
+#' @param param_to_be_estimated, column name of dependent variable
+#' @param dataset, a dataframe
+#' @param fix_eff, names of variables as fixed effect predictors
 #' @param fix_eff_interact_vars, if interaction -true
 #' @param random_intercept_vars, names of variables for random intercept
 #' @param nested_intercept_vars_pairs, those of the random intercept variables

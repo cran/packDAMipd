@@ -153,9 +153,10 @@ plot_prediction_parametric_survival <- function(param_to_be_estimated,
     if (sum(is.na(result)) == 0) {
       indep_lvl <- result
     } else {
-      levels <- as.numeric(as.factor(indep))
-      levels <- levels[is.na(levels)]
-      indep_lvl <- unique(levels)
+      #levels <- (as.factor(indep))
+      #levels <- levels[is.na(levels)]
+      indep_lvl <- unique(indep)
+      indep_lvl <- indep_lvl[!is.na(indep_lvl)]
     }
     for (m in seq_len(length(indep_lvl))) {
       graphics::matplot(cbind(prediction_value$fit[m, ],
@@ -387,7 +388,17 @@ plot_return_residual_cox <- function(param_to_be_estimated, indep_var,
   grDevices::pdf(name_file_plot)
 
   residuals_martingale <- stats::residuals(fit, type = "martingale")
-  cox_snell <- residuals_martingale - dataset[[param_to_be_estimated]]
+  ind1 <- which(is.na(dataset[[param_to_be_estimated]]))
+  ind2 <- which(is.na(dataset[[indep_var]]))
+  indices <- c()
+  for(k in 1: length(covariates)) {
+    ind <- which(is.na(dataset[[covariates[k]]]))
+    indices <- append(indices, ind)
+  }
+  missing_ind <- unique(c(ind1, ind2, indices))
+  reqd <- dataset[[param_to_be_estimated]]
+  reqd <- reqd[-missing_ind]
+  cox_snell <- residuals_martingale - reqd
   residuals_deviance <- stats::residuals(fit, type = "deviance")
   residuals_score <- stats::residuals(fit, type = "score")
   residuals_schoenfeld <- stats::residuals(fit, type = "schoenfeld")
@@ -395,7 +406,7 @@ plot_return_residual_cox <- function(param_to_be_estimated, indep_var,
   residuals_dfbetas <- stats::residuals(fit, type = "dfbetas")
   residuals_scaledsch <- stats::residuals(fit, type = "scaledsch")
   residuals_partial <- stats::residuals(fit, type = "partial")
-  if (is.na(covariates)) {
+  if (sum(is.na(covariates)) == length(covariates)) {
     oldpar <- graphics::par(no.readonly = TRUE)
     graphics::par(mar = c(4, 4, 2, 2))
 

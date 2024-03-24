@@ -60,11 +60,12 @@ calculate_icer_nmb <- function(list_markov, threshold, comparator = NULL) {
   expected_colnames <- c(
     "strategy", "method", "half_cycle_correction", "transition_matrix",
     "param_matrix", "list_param_values", "health_states", "cycles",
-    "initial_state", "initial_cost", "discount",
-    "trace_matrix", "cost_matrix", "utility_matrix"
+    "initial_state", "discount",
+    "trace_matrix", "cost_matrix", "utility_matrix", "startup_cost", "startup_util",
+    "state_cost_only_prevalent", "state_util_only_prevalent"
   )
-  if (sum(colnames(list_markov) %in% expected_colnames) <
-      ncol(list_markov) - 2) {
+  if (sum(colnames(list_markov) %in% expected_colnames) !=
+      ncol(list_markov)) {
     stop("column names of list of markov_model objects look different")
   }
   # checking all the markov model objects
@@ -230,10 +231,10 @@ check_list_markov_models <- function(list_markov) {
 #' this.strategy <- strategy(tm, health_states, "intervention")
 #' sec_markov <- markov_model(this.strategy, 24, c(1000, 0, 0), c(0, 0))
 #' list_markov <- combine_markov(this_markov, sec_markov)
-#' plot_ceac(list_markov, c(1000, 2000, 3000), comparator = "control")
+#' plot_nmb_lambda(list_markov, c(1000, 2000, 3000), comparator = "control")
 #' }
 #' @export
-plot_ceac <- function(list_markov, threshold_values, comparator,
+plot_nmb_lambda <- function(list_markov, threshold_values, comparator,
                       currency = "GBP") {
   if (is.null(threshold_values))
     stop("Error - Threshold values can not be null")
@@ -253,7 +254,7 @@ plot_ceac <- function(list_markov, threshold_values, comparator,
     nmb_all <- as.data.frame(nmb_all)
     xvalues <- nmb_all[, 2]
     yvalues <- nmb_all[, 1]
-    name_file_plot <- paste0("Cost-effectiveness acceptability curve.pdf",
+    name_file_plot <- paste0("NMB for thresholds.pdf",
                              sep = "")
     grDevices::pdf(name_file_plot)
     p <- ggplot2::ggplot(data = nmb_all, ggplot2::aes(x = xvalues,
@@ -261,7 +262,7 @@ plot_ceac <- function(list_markov, threshold_values, comparator,
       ggplot2::geom_line(color = "red") +
       ggplot2::geom_point() +
       ggplot2::labs(
-        title = "Cost-effectiveness acceptability curve",
+        title = "NMB for thresholds",
         x = paste("Threshold values (", currency, ")", sep = " "), y = "NMB"
       )
     graphics::plot(p) # plot result

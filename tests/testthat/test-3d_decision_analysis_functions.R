@@ -163,11 +163,11 @@ test_that("testing plotting ceac", {
   this.strategy <- strategy(tm, health_states, "intervention")
   sec_markov <- markov_model(this.strategy, 24, c(1000, 0, 0), c(0, 0))
   list_markov <- combine_markov(this_markov, sec_markov)
-  plot_ceac(list_markov, c(1000, 2000, 3000), comparator = "control")
+  plot_nmb_lambda(list_markov, c(1000, 2000, 3000), comparator = "control")
 
-  expect_error(plot_ceac(NULL, c(1000, 2000, 3000), comparator = "control"))
-  expect_error(plot_ceac(list_markov, NULL, comparator = "control"))
-  expect_error(plot_ceac(list_markov, c(1000), comparator = "control"))
+  expect_error(plot_nmb_lambda(NULL, c(1000, 2000, 3000), comparator = "control"))
+  expect_error(plot_nmb_lambda(list_markov, NULL, comparator = "control"))
+  expect_error(plot_nmb_lambda(list_markov, c(1000), comparator = "control"))
 })
 ###############################################################################
 context("testing plotting efficieny frontier")

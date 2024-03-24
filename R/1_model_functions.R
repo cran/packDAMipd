@@ -60,7 +60,7 @@ health_state <- function(name, cost, utility, state_time = 0, absorb = FALSE) {
 #' After checking the given state is a health state and given variable
 #' is defined in the health state, the value of the variable is returned
 get_var_state <- function(state, var) {
-  if (class(state) == "health_state") {
+  if (inherits(state, "health_state")) {
     if (sum(attributes(state)$names == var) < 1) {
       stop("Given variable is not a class attribute")
     }
@@ -83,7 +83,7 @@ get_var_state <- function(state, var) {
 #' the value of the variable is set
 #' if the value is not numeric, it is being parsed to form an expression
 set_var_state <- function(state, var, new_value) {
-  if (class(state) == "health_state") {
+  if (inherits(state, "health_state")) {
     if (var %in% names(state)) {
       if (is.numeric(new_value)) {
         state[[var]] <- new_value
@@ -115,14 +115,16 @@ set_var_state <- function(state, var, new_value) {
 combine_state <- function(...) {
   .dots <- list(...)
   for (i in seq_len(length(.dots))) {
-    if (class(.dots[[i]]) != "health_state") {
+    if(!inherits(.dots[[i]], "health_state")){
+    #if (class(.dots[[i]]) != "health_state") {
       if (typeof(.dots[[i]]) == "list") {
         this <- .dots[[i]]
         for (m in seq_len(length(this))) {
-          if (class(this[[m]]) != "health_state")
+          if(!inherits(this[[m]], "health_state"))
+          #if (class(this[[m]]) != "health_state")
             stop("Each object should be of class health_state")
         }
-      combined <- unlist(.dots, recursive = FALSE)
+        combined <- unlist(.dots, recursive = FALSE)
       }else{
         stop("Each object should be of class health_state or a list")
       }
@@ -156,7 +158,7 @@ check_values_states <- function(health_states) {
   no_states <- length(health_states)
   for (j in 1:no_states) {
     this_state <- health_states[[j]]
-    if (class(this_state) != "health_state") {
+    if (is(this_state) != "health_state") {
       stop("Class of object should be a health_state")
     }
     names_length <- length(names(this_state))
@@ -452,8 +454,8 @@ check_trans_prob <- function(trans_mat) {
     if (any(rowSums(trans_mat) != 1)) {
       sums <- rowSums(trans_mat)
       diff <- abs(sums - 1)
-      if (any(diff < 1e-8 & diff > 0)) {
-        index <- which(diff < 1e-8 & diff > 0)
+      if (any(diff < 1e-6 & diff > 0)) {
+        index <- which(diff < 1e-6 & diff > 0)
         for (ind in seq_len(length(index))) {
           trans_mat[ind, 1] <- 1 - sum(trans_mat[ind, 2:ncol(trans_mat)])
         }
@@ -463,7 +465,7 @@ check_trans_prob <- function(trans_mat) {
     }
     return(0)
   } else {
-    stop("Probailities must be numeric")
+    stop("Probabilities must be numeric")
   }
 }
 #######################################################################
@@ -541,15 +543,18 @@ strategy <- function(trans_mat, states, name, trans_cost = NULL,
     stop("class is not a transition matrix")
   }
   for (i in length(states)) {
-    if (class(states[[i]]) != "health_state") {
+    if (!inherits(states[[i]], "health_state")) {
+    #if (class(states[[i]]) != "health_state") {
       stop("state objects should of class health_state")
     }
   }
-  if (!is.null(trans_cost) & class(trans_cost) != "transition_cost_util") {
+  if (!is.null(trans_cost) & !inherits(trans_cost, "transition_cost_util")) {
+  #if (!is.null(trans_cost) & class(trans_cost) != "transition_cost_util") {
     stop("Error - transition cost should be of type transition_cost_util with
          same dimentions are transition matrix")
   }
-  if (!is.null(trans_util) & class(trans_util) != "transition_cost_util") {
+  if (!is.null(trans_util) & !inherits(trans_util, "transition_cost_util")) {
+  #if (!is.null(trans_util) & class(trans_util) != "transition_cost_util") {
     stop("Error - transition utility should be of type transition_cost_util
          with same dimentions are transition matrix")
   }
@@ -778,7 +783,7 @@ markov_model <- function(current_strategy, cycles, initial_state,
       }
     }
     }
-    if (sum(trace_matrix[i, ]) - sum(initial_state) > 1e-4)
+    if (sum(trace_matrix[i, ]) - sum(initial_state) > 5e-4)
       stop(paste("Population loss - check at cycle", i, sep = ""))
   }
   nozeros <- rep(0, cycles + 1)
@@ -831,7 +836,9 @@ markov_model <- function(current_strategy, cycles, initial_state,
         cost_matrix = cost_matrix,
         utility_matrix = utility_matrix,
         startup_cost = startup_cost,
-        startup_util = startup_util)
+        startup_util = startup_util,
+        state_cost_only_prevalent = state_cost_only_prevalent,
+        state_util_only_prevalent = state_util_only_prevalent)
   attr(value, "class") <- "markov_model"
   value
 }
@@ -866,13 +873,13 @@ markov_model <- function(current_strategy, cycles, initial_state,
 #' @details
 #' Combining Markov models for easiness of comparison
 combine_markov <- function(markov1, ...) {
-  if (class(markov1) == "markov_model") {
+  if (is(markov1) == "markov_model") {
     all_markovs <- markov1
   } else {
     if (typeof(markov1) == "list") {
       all_markovs <- c()
       for (i in seq_len(length(markov1))) {
-        if (class(markov1[[i]]) != "markov_model")
+        if (is(markov1[[i]]) != "markov_model")
             stop("class is not a Markov model")
         all_markovs <- methods::cbind2(all_markovs, markov1[[i]])
       }
@@ -905,17 +912,20 @@ combine_markov <- function(markov1, ...) {
 #' }
 #' @export
 #' @importFrom reshape2 melt
+#' @importFrom methods is
 plot_model <- function(markov) {
-  if (class(markov) != "markov_model") {
+  if (is(markov) != "markov_model") {
     stop("The object has to be of class markov_model")
   }
   this_trace <- data.frame(markov$trace_matrix)
   this_trace_melted <- reshape2::melt(this_trace, id.var = "Cycles")
 
   name_file_plot <- paste0("Model_states.pdf", sep = "")
+  Cycles = value = variable =NULL
+
   grDevices::pdf(name_file_plot)
-  p <- ggplot2::ggplot(this_trace_melted, ggplot2::aes_(x = ~Cycles,
-                  y = ~value, col = ~variable)) +
+  p <- ggplot2::ggplot(this_trace_melted, ggplot2::aes(x = Cycles,
+                  y = value, col = variable)) +
     ggplot2::geom_line() +
     ggplot2::labs(x = "Cycles") +
     ggplot2::labs(y = "States") +

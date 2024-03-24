@@ -95,8 +95,9 @@ define_parameters_psa <- function(base_param_list, sample_list) {
 #' result <- do_psa(mono_markov, param_table, 10)
 #' }
 #' @export
+#' @importFrom methods is
 do_psa <- function(this_markov, psa_table, num_rep) {
-  if (class(this_markov) != "markov_model") {
+  if (is(this_markov) != "markov_model") {
     stop("Error - the model should be of class markov_model")
   }
   check <- sum(names(psa_table) == c("base_param_list", "sample_list"))
@@ -345,6 +346,8 @@ summary_plot_psa <- function(result_psa_params_control,
     mean_nmb <- mean(this_nmb)
     sd_icer <- stats::sd(this_icer)
     sd_nmb <- stats::sd(this_nmb)
+
+
     name_file_plot <- paste0("Probabilistic sensitivity analysis_ICER_NMB.pdf",
                              sep = "")
     grDevices::pdf(name_file_plot)
@@ -409,10 +412,11 @@ summary_plot_psa <- function(result_psa_params_control,
     names(sd_all) <- colnames(list_all[1:no_entries])
 
     name_file_plot <- paste0("Utility or Effect.pdf", sep = "")
+    utility = cost = NULL
     grDevices::pdf(name_file_plot)
-    plot1 <- ggplot2::ggplot(data = list_all, ggplot2::aes_(
-      x = ~utility,
-      y = ~cost
+    plot1 <- ggplot2::ggplot(data = list_all, ggplot2::aes(
+      x = utility,
+      y = cost
     )) +
       ggplot2::geom_point(color = "blue", size = 3) +
       ggplot2::labs(x = "Utility / Effect") +
@@ -423,10 +427,10 @@ summary_plot_psa <- function(result_psa_params_control,
 
     name_file_plot <- paste0("Histogram of Cost.pdf", sep = "")
     grDevices::pdf(name_file_plot)
-    plot2 <- ggplot2::ggplot(data = list_all, ggplot2::aes_(x = ~cost)) +
+    plot2 <- ggplot2::ggplot(data = list_all, ggplot2::aes(x = cost)) +
       ggplot2::geom_histogram(bins = 20, color = "black", fill = "white") +
       ggplot2::labs(title = "Histogram of cost", x = "Cost", y = "Count") +
-      ggplot2::geom_vline(ggplot2::aes_(xintercept = mean(list_all$cost)),
+      ggplot2::geom_vline(ggplot2::aes(xintercept = mean(cost)),
         color = "blue", linetype = "dashed", size = 1
       ) +
       ggplot2::theme(plot.title = ggplot2::element_text(hjust = 0.5))
@@ -435,11 +439,11 @@ summary_plot_psa <- function(result_psa_params_control,
 
     name_file_plot <- paste0("Histogram of Utility.pdf", sep = "")
     grDevices::pdf(name_file_plot)
-    plot3 <- ggplot2::ggplot(data = list_all, ggplot2::aes_(x = ~utility)) +
+    plot3 <- ggplot2::ggplot(data = list_all, ggplot2::aes(x = utility)) +
       ggplot2::geom_histogram(bins = 20, color = "black", fill = "white") +
       ggplot2::labs(title = "Histogram of utility values", x = "Utility",
                     y = "Count") +
-      ggplot2::geom_vline(ggplot2::aes_(xintercept = mean(list_all$utility)),
+      ggplot2::geom_vline(ggplot2::aes(xintercept = mean(utility)),
         color = "red", linetype = "dashed", size = 1
       ) +
       ggplot2::theme(plot.title = ggplot2::element_text(hjust = 0.5))
@@ -457,4 +461,51 @@ summary_plot_psa <- function(result_psa_params_control,
     ))
   }
   return(result)
+}
+##################################################################
+#' Function to plot CEAC
+#' @param control_markov  markov model for control
+#' @param trt_markov  markov model for treatment
+#' @param psa_table_ctrl  param table for psa for control
+#' @param psa_table_trt  param table for psa for  treatment
+#' @param thresholds threshold values of WTP
+#' @param num_rep number of repetitions
+#' @param comparator the strategy to be compared with
+#' @return plot of  ceac
+#' @export
+plot_ceac_psa<-function(control_markov, trt_markov,
+                        psa_table_ctrl, psa_table_trt,
+                        thresholds, num_rep, comparator) {
+  result_psa_params_control <- do_psa(control_markov, psa_table_ctrl, num_rep)
+  result_psa_params_treat <- do_psa(trt_markov, psa_table_trt, num_rep)
+  probabilities_costeff <- c()
+  for(i in 1:length(thresholds)){
+    list_all <- list_paramwise_psa_result(result_psa_params_control,
+                                          result_psa_params_treat,
+                                          thresholds[i], comparator)
+    this_icer <- as.numeric(as.character(list_all$ICER))
+    prob_ce <- sum(this_icer < thresholds[i])/num_rep
+    probabilities_costeff <- append(probabilities_costeff, prob_ce )
+  }
+  name_file_plot <- paste0("Cost effectiveness acceptance curve.pdf",
+                           sep = "")
+  ceac_data <- as.data.frame(cbind(thresholds, probabilities_costeff))
+  grDevices::pdf(name_file_plot)
+  plot1 <- ggplot2::ggplot(data = ceac_data, ggplot2::aes(
+    x = thresholds,
+    y = probabilities_costeff
+  )) +
+    ggplot2::geom_point(color = "blue", size = 3) +
+    ggplot2::labs(x = "Willingness to pay") +
+    ggplot2::labs(y = "Probability of cost effectiveness(%)") +
+    ggplot2::theme(plot.title = ggplot2::element_text(hjust = 0.5))
+  graphics::plot(plot1) # plot result
+  grDevices::dev.off()
+
+  result <- structure(list(
+    probabilities_costeff = probabilities_costeff,
+    ceac_plot = plot1
+  ))
+  return(result)
+
 }

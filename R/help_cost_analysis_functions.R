@@ -13,7 +13,7 @@
 return_equal_str_col <- function(col, the_data, the_str) {
   the_col <- trimws(toupper(the_data[[col]]))
   compare <- trimws(toupper(the_str))
-  temp <- the_data[the_col == compare, ]
+  temp <- the_data[the_col == compare & !is.na(the_col), ]
   return(temp)
 }
 ##############################################################################
@@ -29,10 +29,16 @@ return_equal_str_col <- function(col, the_data, the_str) {
 #' ans <- return_equal_liststring_col(2, the_data, c("a", "cc"))
 #' @export
 return_equal_liststring_col <- function(col, the_data, list_str) {
-  the_col <- trimws(toupper(the_data[[col]]))
-  index <- which(the_col %in%  trimws(toupper(list_str)))
-  temp <- the_data[the_col == trimws(toupper(list_str[index])), ]
-  return(temp)
+  the_col <- unique(trimws(toupper(the_data[[col]])))
+  return_data <- c()
+  for (i in seq_len(length(the_col))) {
+     index <- which(the_col[i] %in%  trimws(toupper(list_str)))
+     if (length(index) >= 1) {
+        temp <- the_data[trimws(toupper(the_data[[col]])) == the_col[i], ]
+        return_data <- rbind(return_data, temp)
+     }
+  }
+  return(return_data)
 }
 ##############################################################################
 #' Function to get the subset of data compared to a string after
@@ -48,16 +54,16 @@ return_equal_liststring_col <- function(col, the_data, list_str) {
 #' ans <- return_equal_liststring_listcol(2, the_data, c("tablet", "tablets"))
 #' @export
 return_equal_liststring_listcol <- function(col, the_data, list_str) {
-  col_temp <- trimws(toupper(the_data[[col]]))
+  col_temp <- unique(trimws(toupper(the_data[[col]])))
   strings <- trimws(toupper(list_str))
   i <- 1
   indices <- c()
-  tempa <- data.frame()
+  temp_a <- data.frame()
   while (i <= length(col_temp)) {
     index <- which(col_temp[i] == strings)
     if (length(index) != 0) {
-      row <- the_data[which(col_temp == strings[index]), ]
-      tempa <- rbind(row, tempa)
+      row <- the_data[which(trimws(toupper(the_data[[col]])) == strings[index]), ]
+      temp_a <- rbind(row, temp_a)
       indices <- append(indices, index)
     }
     i <- i + 1
@@ -65,7 +71,7 @@ return_equal_liststring_listcol <- function(col, the_data, list_str) {
   if (length(indices) == 0) {
     stop("Matching columns cant be found")
   }
-  return(tempa)
+  return(temp_a)
 }
 
 ##############################################################################
@@ -96,9 +102,9 @@ return0_if_not_null_na <- function(param) {
 #' @examples
 #' the_data <- as.data.frame(cbind(c("one", "two"), c("a", "b"), c("aa", "bb")))
 #' colnames(the_data) <- c("name", "brand_one", "two")
-#' get_col_multiple_pattern(c("brand", "trade"), the_data)
+#' get_single_col_multiple_pattern(c("brand", "trade"), the_data)
 #' @export
-get_col_multiple_pattern <- function(pattern, the_data) {
+get_single_col_multiple_pattern <- function(pattern, the_data) {
   res <- unlist(lapply(pattern,
               IPDFileCheck::get_colno_pattern_colname, colnames(the_data)))
   if (length(res[which(res != -1)]) == 1) {
@@ -107,7 +113,6 @@ get_col_multiple_pattern <- function(pattern, the_data) {
     stop("Error- cols with pattern not found")
   }
   return(col_no)
-
 }
 #############################################################################
 #' Function to get the weight and time units
@@ -583,10 +588,10 @@ convert_freq_diff_basis <- function(freq_given, basis = "day") {
     freq_req_basis <- freq_req_basis * 7
   }
   if ((basis == "month" | basis == "months") & !is.na(freq_req_basis)) {
-    freq_req_basis <- freq_req_basis * 30
+    freq_req_basis <- freq_req_basis * 30.44
   }
   if ((basis == "year" | basis == "year") & !is.na(freq_req_basis)) {
-    freq_req_basis <- freq_req_basis * 365
+    freq_req_basis <- freq_req_basis * 365.25
   }
   return(freq_req_basis)
 }
@@ -653,7 +658,7 @@ convert_weight_diff_basis <- function(given_unit, basis = "mg") {
         unit_req_basis <- 0.001
       }
     }
-  if (basis == "gram" | basis == "gm") {
+  if (basis == "gram" | basis == "gm" | basis == "g") {
       if (nospace_unit == "mg" | nospace_unit == "milligram") {
         unit_req_basis <- 1e-3
       }
@@ -671,7 +676,7 @@ convert_weight_diff_basis <- function(given_unit, basis = "mg") {
       }
     }
   if (basis == "kg" | basis == "kilo"
-        | basis == "kiloram") {
+        | basis == "kilogram") {
       if (nospace_unit == "mg" | nospace_unit == "milligram") {
         unit_req_basis <- 1e-6
       }
@@ -779,10 +784,16 @@ convert_wtpertimediff_basis <- function(given_unit, basis = "mcg/hour") {
   } else {
         unit_req_basis <- NULL
         index <- stringr::str_locate(given_unit, "/")
+        if (sum(is.na(index)) != 0) {
+          stop("given unit should be in the form wt/time")
+        }
         given_wt <- stringr::str_sub(given_unit, 1, index[1] - 1)
         given_time <- stringr::str_sub(given_unit, index[2] + 1,
                                          nchar(given_unit))
         basis_index <- stringr::str_locate(basis, "/")
+        if (sum(is.na(basis_index)) != 0) {
+          stop("basis unit should be in the form wt/time")
+        }
         basis_wt <- stringr::str_sub(basis, 1, basis_index[1] - 1)
         basis_time <- stringr::str_sub(basis, basis_index[2] + 1, nchar(basis))
         basis_wt <- tolower(gsub("[[:space:]]", "", basis_wt))
@@ -943,10 +954,10 @@ convert_to_given_timeperiod <- function(given_time, basis_time = "day") {
         unit_req_time <- 7
       }
       if (sec_part == "month" | sec_part == "months") {
-        unit_req_time <- 30
+        unit_req_time <- 30.44
       }
       if (sec_part == "year" | sec_part == "years") {
-        unit_req_time <- 365
+        unit_req_time <- 365.25
       }
       if (sec_part == "hour" | sec_part == "hr" | sec_part == "hours") {
         unit_req_time <- 1 / 24
@@ -966,19 +977,19 @@ convert_to_given_timeperiod <- function(given_time, basis_time = "day") {
         unit_req_time <- 1 / 4
       }
       if (sec_part == "day" | sec_part == "days") {
-        unit_req_time <- 1 / 30
+        unit_req_time <- 1 / 30.44
       }
       if (sec_part == "year" | sec_part == "years") {
         unit_req_time <- 12
       }
       if (sec_part == "hour" | sec_part == "hr" | sec_part == "hours") {
-        unit_req_time <- 1 / (30 * 24)
+        unit_req_time <- 1 / (30.44 * 24)
       }
       if (sec_part == "minute" | sec_part == "min" | sec_part == "minutes") {
-        unit_req_time <- 1 / (30 * 24 * 60)
+        unit_req_time <- 1 / (30.44 * 24 * 60)
       }
       if (sec_part == "sec" | sec_part == "second" | sec_part == "seconds") {
-        unit_req_time <- 1 / (30 * 24 * 60 * 60)
+        unit_req_time <- 1 / (30.44 * 24 * 60 * 60)
       }
     }
     if (basis_time == "week" | basis_time == "weeks") {
@@ -1009,13 +1020,13 @@ convert_to_given_timeperiod <- function(given_time, basis_time = "day") {
         unit_req_time <- 1
       }
       if (sec_part == "month" | sec_part == "months") {
-        unit_req_time <- 24 * 30
+        unit_req_time <- 24 * 30.44
       }
       if (sec_part == "day" | sec_part == "days") {
         unit_req_time <- 24
       }
       if (sec_part == "year" | sec_part == "years") {
-        unit_req_time <- 24 * 365
+        unit_req_time <- 24 * 365.25
       }
       if (sec_part == "week" | sec_part == "weeks") {
         unit_req_time <- 7 * 24
@@ -1034,7 +1045,14 @@ convert_to_given_timeperiod <- function(given_time, basis_time = "day") {
   }
   return(unit_req_basis)
 }
-#############################################################################
+########################################################################
+#' Convert wt per unit volume  to given basis
+#' @param given_unit given unit
+#' @param basis given basis, default is "mg/ml"
+#' @return converted unit
+#' @examples
+#' convert_wtpervoldiff_basis("g/ml")
+#' @export
 convert_wtpervoldiff_basis <- function(given_unit, basis = "mg/ml") {
   unit_req_basis <- NA
   if (is.null(given_unit) | is.null(basis))
@@ -1065,4 +1083,58 @@ convert_wtpervoldiff_basis <- function(given_unit, basis = "mg/ml") {
   else
     stop("Error converting wt per vol unit")
   return(unit_req_basis)
+}
+########################################################################
+#' Convert the combined dose to its individual component numerical value
+#' and units
+#' @param the_string given combined unit
+#' @param separator given character for separation , default is "/"
+#' @return separated numerical value and its units
+#' @examples
+#' get_doses_combination_units("10g/2ml")
+#' @export
+get_doses_combination_units <- function(the_string, separator = "/"){
+  whole_res <- c()
+  for (i in 1:length(the_string)) {
+    mix1 <- unlist(stringr::str_locate_all(the_string[i], separator))
+    if (length(mix1) != 0) {
+      firstdos <- substr(the_string[i], 1, mix1[1] - 1)
+      secdos <- substr(the_string[i], mix1[1] + 1,
+                       nchar(the_string[i]))
+      firstdos_num <- gsub("[^0-9.-]", "", firstdos)
+      seconddos_num <- gsub("[^0-9.-]", "", secdos)
+      unit1 <- trimws(gsub("[0-9\\.]", "", firstdos))
+      unit2 <- trimws(gsub("[0-9\\.]", "", secdos))
+    }
+    this_doses <- c(firstdos_num, unit1, seconddos_num, unit2)
+    whole_res <- append(whole_res, this_doses)
+  }
+  whole_res <- as.data.frame(matrix(whole_res, ncol = 4, byrow = T))
+  colnames(whole_res) <- c("num1", "unit1", "num2", "unit2")
+  return(whole_res)
+}
+########################################################################
+#' Convert the combined dose to its individual component numerical value
+#' or can be unit/unit
+#' @param the_string given combined unit
+#' @param separator given character for separation , default is "/"
+#' @return separated texts
+#' @examples
+#' get_doses_combination("g/ml")
+#' @export
+get_doses_combination <- function(the_string, separator = "/"){
+  whole_res <- c()
+  for (i in 1:length(the_string)) {
+    mix1 <- unlist(stringr::str_locate_all(the_string[i], separator))
+    if (length(mix1) != 0) {
+      firstdos <- substr(the_string[i], 1, mix1[1] - 1)
+      secdos <- substr(the_string[i], mix1[1] + 1,
+                       nchar(the_string[i]))
+    }
+    this_doses <- c(firstdos, secdos)
+    whole_res <- append(whole_res, this_doses)
+  }
+  whole_res <- as.data.frame(matrix(whole_res, ncol = 2, byrow = T))
+  colnames(whole_res) <- c("first", "second")
+  return(whole_res)
 }

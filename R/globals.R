@@ -3,8 +3,10 @@
 #' @importFrom utils globalVariables
 utils::globalVariables(
   names = c(
-    "cost_data", "trace_data", "utility_data",
-    "table_param", "trial_data", "adl_scoring", "blank"
+    "cost_data.df", "trace_data.df", "utility_data.df",
+    "table_param.df", "trial_data.df", "adl_scoring.df",
+    "promis3a_scoring.df", "blank.df"
   ),
-  package = "packDAMipd", add = TRUE
+  package = "packDAMipd", add = FALSE
 )
+

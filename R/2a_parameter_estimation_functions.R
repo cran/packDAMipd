@@ -43,8 +43,8 @@ get_parameter_read <- function(parameter, paramfile, strategycol = NA,
   if (IPDFileCheck::test_file_exist_read(paramfile) != 0) {
     stop("File doesnt exist or not able to access")
   }
-  dataset <- data.frame(read.csv(paramfile, header = TRUE, sep = ",",
-                                 stringsAsFactors = FALSE))
+
+  dataset <- load_trial_data(paramfile)
   # is a column named value exists?
   result <- IPDFileCheck::check_column_exists("value", dataset)
   if (result != 0) {
@@ -351,6 +351,7 @@ get_parameter_def_distribution <- function(parameter, paramfile,
 #' @param package_mixed_model package to be used for mixed model
 #' ie nlme or lme4
 #' @return results the results of the regression analysis
+#' @import ISLR
 #' @examples
 #'\donttest{
 #' result <- get_parameter_estimated_regression(
@@ -509,6 +510,8 @@ get_parameter_estimated_regression <- function(param_to_be_estimated, data,
       info_distribution, covariates, timevar_survival, cluster_var
     )
   }
+  if (is.null(results))
+    stop("No appropriate methods found, please check")
   return(results)
 }
 #' ###########################################################################
@@ -669,6 +672,7 @@ use_linear_regression <- function(param_to_be_estimated, dataset, indep_var,
 #' @param naaction action to be taken with the missing values
 #' @param link link function if not the default for each family
 #' @return the results of the regression analysis
+#' @import ISLR
 #' @examples
 #' \donttest{
 #' gm_result <- use_generalised_linear_model(
@@ -845,10 +849,10 @@ use_linear_mixed_model <- function(param_to_be_estimated, dataset,
 
   # create expression for mixed model using the variables fixed effect and
   # random intercept
-  if (is.na(package_mixed_model) | is.null(package_mixed_model) |
-      package_mixed_model == "lme4") {
-    expression_recreated <-
-      form_expression_mixed_model_lme4(param_to_be_estimated, dataset,
+  if (!is.null(package_mixed_model)) {
+    if (is.na(package_mixed_model) | package_mixed_model == "lme4") {
+      expression_recreated <-
+        form_expression_mixed_model_lme4(param_to_be_estimated, dataset,
                                        fix_eff, fix_eff_interact_vars,
                                        random_intercept_vars,
                                        nested_intercept_vars_pairs,
@@ -856,8 +860,8 @@ use_linear_mixed_model <- function(param_to_be_estimated, dataset,
                                        uncorrel_slope_intercept_pairs,
                                        random_slope_intercept_pairs,
                                        family = NA, link = NA)
-  } else {
-    if (package_mixed_model == "nlme") {
+    } else {
+      if (package_mixed_model == "nlme") {
         expression_recreated <-
           form_expression_mixed_model_lme4(param_to_be_estimated, dataset,
                                            fix_eff, fix_eff_interact_vars,
@@ -867,7 +871,18 @@ use_linear_mixed_model <- function(param_to_be_estimated, dataset,
                                            uncorrel_slope_intercept_pairs,
                                            random_slope_intercept_pairs,
                                            family = NA, link = NA)
+      }
     }
+  } else {
+    expression_recreated <-
+      form_expression_mixed_model_lme4(param_to_be_estimated, dataset,
+                                       fix_eff, fix_eff_interact_vars,
+                                       random_intercept_vars,
+                                       nested_intercept_vars_pairs,
+                                       cross_intercept_vars_pairs,
+                                       uncorrel_slope_intercept_pairs,
+                                       random_slope_intercept_pairs,
+                                       family = NA, link = NA)
   }
 
   # fit result
@@ -940,7 +955,8 @@ use_linear_mixed_model <- function(param_to_be_estimated, dataset,
   # Predicted and simulated values after regression
   predicted <- stats::predict(fit, newdata = dataset)
   # deterministic and takes only fixed effect
-  simulated <- stats::simulate(fit, newdata = dataset)[, 1]
+  simulated <- stats::simulate(fit, seed = 1, re.form = NA,
+                               allow.new.levels = T, newdata = dataset)[, 1]
   # stochastic and takes both fixed effect and random effect
   # source  https://gist.github.com/tmalsburg/df66e6c2ab494fad83ee
   no_fixed_eff <- length(fix_eff)
@@ -1003,7 +1019,7 @@ use_linear_mixed_model <- function(param_to_be_estimated, dataset,
         this_plot <- ggplot2::ggplot(dataset, ggplot2::aes(x = xvar,
                                               y = yvar, colour = group)) +
           ggplot2::geom_point(size = 3) +
-          ggplot2::geom_line(ggplot2::aes(y = predicted), size = 2) +
+          ggplot2::geom_line(ggplot2::aes(y = predicted), linewidth = 2) +
           ggplot2::labs(color = random_intercept_vars[j]) +
           ggplot2::xlab(fix_eff[i]) +
           ggplot2::ylab(param_to_be_estimated)
@@ -1264,7 +1280,7 @@ use_generalised_linear_mixed_model <- function(param_to_be_estimated, dataset,
           this_plot <- ggplot2::ggplot(dataset, ggplot2::aes(x = xvar,
                                                 y = yvar, colour = group)) +
             ggplot2::geom_point(size = 3) +
-            ggplot2::geom_line(ggplot2::aes(y = predicted), size = 2) +
+            ggplot2::geom_line(ggplot2::aes(y = predicted), linewidth = 2) +
             ggplot2::labs(color = random_intercept_vars[j]) +
             ggplot2::xlab(fix_eff[i]) +
             ggplot2::ylab(param_to_be_estimated)

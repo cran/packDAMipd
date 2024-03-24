@@ -369,7 +369,7 @@ test_that("testing creating markov model", {
   # class of mm is markov_model
   expect_equal(class(mm), "markov_model")
   trace_matrix_1 <- mm$trace_matrix
-  df <- matrix(unlist(trace_data), nrow = 11)
+  df <- matrix(unlist(trace_matrix_1), nrow = 11)
   expect_equal(trace_matrix_1, df, check.attributes = FALSE, tolerance = 1e-4)
 
 
@@ -398,7 +398,7 @@ test_that("testing creating markov model", {
                             tm_cost, tm_util)
   mm <- markov_model(this_strategy, 10, c(1, 0), c(0, 0))
   trace_matrix_1 <- mm$trace_matrix
-  df <- matrix(unlist(trace_data), nrow = 11)
+  df <- matrix(unlist(trace_data.df), nrow = 11)
   expect_equal(trace_matrix_1, df, check.attributes = FALSE, tolerance = 1e-4)
 
   mm <- markov_model(this_strategy, 5, c(1, 0), c(0, 0), NULL,
@@ -439,8 +439,9 @@ test_that("testing combining markov states", {
   this_strategy <- strategy(tm, health_states, "control")
   mm2 <- markov_model(this_strategy, 10, c(1, 0), c(0, 0))
   list1 <- combine_markov(mm1, mm2)
-  list2 <- combine_markov(list(mm1, mm2))
-  expect_equal(list1[1, ]$method, list2[1, ]$method)
+
+  expect_error(combine_markov(list(mm1, mm2)))
+
   expect_error(combine_markov(list(a, mm2)))
   expect_error(combine_markov(a, mm2))
 })

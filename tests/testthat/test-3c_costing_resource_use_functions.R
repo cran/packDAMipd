@@ -7,13 +7,14 @@ test_that("testing costing resource use", {
                           package = "packDAMipd")
   ind_part_data <- load_trial_data(datafile)
   unit_cost_data <- load_trial_data(costs_file)
-  # Someone admitted to in patient hospital for 1 day (nhs hospital)
+  # Someone admitted to inpatient hospital for 1 day (nhs hospital)
   # another day not in NHS hospital
   # unit_cost_data shows inpatient hospital admission cost £20
-  # another patient admitted to in patient hospital for 2 days first time,
+  # another patient admitted to inpatient hospital for 2 days first time,
   # then 2 days another time- so total 4 times -£80
 
   part_data <-  ind_part_data[1, ]
+
   res <- costing_resource_use(part_data, "hospital_admission_1",
                               list("length_1", "length_2"),
                               list("nhs_1", "nhs_2"), "day", unit_cost_data,
@@ -204,7 +205,7 @@ test_that("testing costing resource use", {
     "UnitUsed",
     NULL, NULL
   )
-  expect_equal(res$totcost_hospital_admission_1, c(20, 80, NA, NA, NA))
+  expect_equal(res$totcost_hospital_admission_1, c(20, 80, 0, 0, 0))
   #units of resource use expressed and calculated are different
   costs_file <- system.file("extdata",
                             "costs_resource_use_unitexpressed_notright.csv",
@@ -1080,3 +1081,4 @@ test_that("testing extracting unit cost matching description", {
                          cost_calculated_in = "attendance")
  expect_equal(res$totcost_AE_Admission[1], 754, tol = 1e-2)
 })
+

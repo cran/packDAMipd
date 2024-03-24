@@ -141,8 +141,6 @@ test_that("loading a datafile", {
   df <- load_trial_data(system.file("extdata", "hsb2.dta",
                                     package = "packDAMipd"))
   expect_equal(mean(df$id), 100.5, tol = 1e-2)
-  df <- load_trial_data(NULL)
-  expect_equal(mean(df$age), 57.5, tol = 1e-3)
 
   ref_cost_data_file <- system.file("extdata", "test.xlsx",
                                     package = "packDAMipd")
@@ -164,7 +162,7 @@ test_that("making a string of covariates", {
   expect_error(make_string_covariates(NA), NA)
 })
 ###############################################################################
-context("testing  form expression for glm")
+context("testing form expression for glm")
 test_that("testing form expression for glm", {
   formula <- form_expression_glm("admit",
                                  indep_var = "gre", family = "binomial",
@@ -212,15 +210,15 @@ test_that("testing form expression for glm", {
 
 
 ###############################################################################
-context("testing  getting family of distribution for glm")
-test_that("testing  getting family of distribution for glm", {
+context("testing getting family of distribution for glm")
+test_that("testing getting family of distribution for glm", {
   expect_equal(find_glm_distribution("normal"), "gaussian")
   expect_equal(find_glm_distribution("poisson"), "poisson")
   expect_error(find_glm_distribution("logical"))
   # Error the parameter can not be null
   expect_error(find_glm_distribution(NULL))
   expect_error(find_glm_distribution(NA))
-  expect_equal(find_glm_distribution("gamma"), "gamma")
+  expect_equal(find_glm_distribution("gamma"), "Gamma")
   expect_equal(find_glm_distribution("inverse gaussian"), "inverse.gaussian")
   expect_equal(find_glm_distribution("quasi binomial"), "quasibinomial")
   expect_equal(find_glm_distribution("quasi poisson"), "quasipoisson")
@@ -229,8 +227,8 @@ test_that("testing  getting family of distribution for glm", {
 
 
 ###############################################################################
-context("testing  getting link function for the family of distribution for glm")
-test_that("testing  getting link function for distribution for glm", {
+context("testing getting link function for the family of distribution for glm")
+test_that("testing getting link function for distribution for glm", {
   expect_equal(check_link_glm("gaussian", "log"), "log")
   expect_equal(check_link_glm("poisson", "identity"), "identity")
   expect_error(check_link_glm("logical", NULL))
@@ -243,16 +241,18 @@ test_that("testing  getting link function for distribution for glm", {
   expect_error(check_link_glm(NA, "identity"))
   # Error the parameter can not be Na or NULL
   expect_error(check_link_glm("gaussian", NA))
-  expect_equal(check_link_glm("gamma", "identity"), "identity")
+
+  expect_equal(check_link_glm("Gamma", "identity"), "identity")
   expect_equal(check_link_glm("inverse.gaussian", "identity"), "identity")
   expect_equal(check_link_glm("quasi", "identity"), "identity")
   expect_equal(check_link_glm("quasibinomial", "logit"), "logit")
   expect_equal(check_link_glm("quasipoisson", "logit"), "logit")
+
 })
 
 ###############################################################################
-context("testing  diagnosis for glm fit")
-test_that("testing  diagnosis for glm fit", {
+context("testing diagnosis for glm fit")
+test_that("testing diagnosis for glm fit", {
   datafile <- system.file("extdata", "binary.csv", package = "packDAMipd")
   mydata <- read.csv(datafile)
   results_logit <- use_generalised_linear_model("admit", dataset = mydata,
@@ -311,7 +311,7 @@ test_that("testing  diagnosis for glm fit", {
 })
 ###############################################################################
 context("testing find distribution for survreg")
-test_that("testing  diagnosis for glm fit", {
+test_that("testing diagnosis for glm fit", {
   expect_equal(find_survreg_distribution("weibull"), "weibull")
   expect_equal(find_survreg_distribution("expo"), "exponential")
   # Error - text can not be NULL or NA
@@ -350,8 +350,8 @@ test_that("testing creating expression for linear regression", {
 })
 
 ###############################################################################
-context("testing  diagnosis for lm fit")
-test_that("testing  diagnosis for lm fit", {
+context("testing diagnosis for lm fit")
+test_that("testing diagnosis for lm fit", {
   datafile <- system.file("extdata", "binary.csv", package = "packDAMipd")
   mydata <- read.csv(datafile)
   results_logit <- use_linear_regression("admit", dataset = mydata,

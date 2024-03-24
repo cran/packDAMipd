@@ -636,8 +636,8 @@ use_coxph_survival <- function(param_to_be_estimated, dataset, indep_var,
     residuals_result = residuals_result
     ))
   # survival cox curves
-  plot_survival_cox_covariates(fit, dataset, param_to_be_estimated,
-                               covariates, indep_var)
+  #plot_survival_cox_covariates(fit, dataset, param_to_be_estimated,
+  #                             covariates, indep_var)
   # model diagnostics and the plor
   model_diagnostics <- survival::cox.zph(fit)
   name_file_plot <- paste0("Coxph_survival_diganostic_",
@@ -645,9 +645,9 @@ use_coxph_survival <- function(param_to_be_estimated, dataset, indep_var,
     ".pdf",
     sep = ""
   )
-  grDevices::pdf(name_file_plot)
-  plot_prediction <- survminer::ggcoxzph(model_diagnostics)
-  grDevices::dev.off()
+  # grDevices::pdf(name_file_plot)
+  # plot_prediction <- survminer::ggcoxzph(model_diagnostics)
+  # grDevices::dev.off()
   # prediction after cox fit
   prediction_coxph <- predict_coxph(fit, dataset, param_to_be_estimated,
                                     covariates, indep_var, timevar_survival)
@@ -662,8 +662,7 @@ use_coxph_survival <- function(param_to_be_estimated, dataset, indep_var,
     residuals = residuals_result,
     model_fit_assessment = model_fit_assessment,
     model_diagnostics = model_diagnostics,
-    prediction_results = prediction_coxph,
-    plot_prediction = plot_prediction
+    prediction_results = prediction_coxph
   ))
   return(results)
 }
